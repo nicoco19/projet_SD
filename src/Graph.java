@@ -1,10 +1,24 @@
 package src;
 
+import java.awt.List;
 import java.io.File;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class Graph {
+  private Map<City,HashSet<Road>> cityRoads;
+  private Deque<City> fileBfs;
+  private Set<City> isVisitBfs;
 
   public Graph(File cities, File roads) {
+    fileBfs = new ArrayDeque<City>();
+    isVisitBfs = new HashSet<City>();
+    cityRoads = new HashMap<City,HashSet<Road>>();
   }
 
   /**
