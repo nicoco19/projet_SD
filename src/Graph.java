@@ -1,7 +1,11 @@
 package src;
 
 import java.awt.List;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -19,6 +23,20 @@ public class Graph {
     fileBfs = new ArrayDeque<City>();
     isVisitBfs = new HashSet<City>();
     cityRoads = new HashMap<City,HashSet<Road>>();
+
+    String[] tabCity = new String[3];
+    try {
+      BufferedReader baladeur = new BufferedReader(new FileReader(roads));
+      String line;
+      while ((line = baladeur.readLine()) != null){
+        tabCity = line.split(",");
+
+      }
+    } catch (FileNotFoundException e) {
+      throw new RuntimeException(e);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**
