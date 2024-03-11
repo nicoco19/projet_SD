@@ -18,50 +18,48 @@ import java.util.Map;
 import java.util.Set;
 
 public class Graph {
-  private Map<City,HashSet<Road>> cityRoads;
-  private Map<String,City> cityName;
+
+  private Map<City, HashSet<Road>> cityRoads;
+  private Map<String, City> cityName;
   private HashMap<Integer, City> citiesId;
   private Deque<City> fileBfs;
   private Set<City> isVisitBfs;
 
   public Graph(File cities, File roads) {
-    cityRoads = new HashMap<City,HashSet<Road>>();
+    cityRoads = new HashMap<City, HashSet<Road>>();
 
-    citiesId = new HashMap<Integer,City>();
-    cityName = new HashMap<String,City>();
+    citiesId = new HashMap<Integer, City>();
+    cityName = new HashMap<String, City>();
 
     fileBfs = new ArrayDeque<City>();
     isVisitBfs = new HashSet<City>();
 
-
-    try(FileReader fileReader = new FileReader(cities);
-
-        BufferedReader bufferedReader =  new BufferedReader(fileReader)){
+    try (FileReader fileReader = new FileReader(cities);
+        BufferedReader bufferedReader = new BufferedReader(fileReader)) {
       String line;
 
-      while((line = bufferedReader.readLine()) != null){
-
-        String [] data = line.split(",");
+      while ((line = bufferedReader.readLine()) != null) {
+        String[] data = line.split(",");
 
         int id = Integer.parseInt(data[0]);
         String name = data[1];
         double longitude = Double.parseDouble(data[2]);
         double latitude = Double.parseDouble(data[3]);
-        City city = new City(id,name,longitude,latitude);
-        citiesId.put(id,city);
-        cityName.put(name,city);
+        City city = new City(id, name, longitude, latitude);
+        citiesId.put(id, city);
+        cityName.put(name, city);
       }
-    }catch(IOException e){
+    } catch (IOException e) {
       e.printStackTrace();
     }
 
-    try(FileReader fileReader = new FileReader(roads);
-        BufferedReader bufferedReader =  new BufferedReader(fileReader)){
+    try (FileReader fileReader = new FileReader(roads);
+        BufferedReader bufferedReader = new BufferedReader(fileReader)) {
       String line;
 
-      while((line = bufferedReader.readLine()) != null){
+      while ((line = bufferedReader.readLine()) != null) {
 
-        String [] data = line.split(",");
+        String[] data = line.split(",");
 
         int cityStartId = Integer.parseInt(data[0]);
         int cityDestId = Integer.parseInt(data[1]);
@@ -70,95 +68,99 @@ public class Graph {
 
         Road road = new Road(cityStart, cityDest);
 
-        if(cityRoads.containsKey(cityStart)){
-          cityRoads.get(cityStart).add(road);
-
-        }else{
-          HashSet <Road> hashSetRoad = new HashSet();
-          hashSetRoad.add(road);
-          cityRoads.put(cityStart,hashSetRoad);
+        if (!cityRoads.containsKey(cityStart)) {
+          HashSet<Road> hashSetRoad = new HashSet();
+          cityRoads.put(cityStart, hashSetRoad);
         }
+
+        cityRoads.get(cityStart).add(road);
       }
-    }catch(IOException e){
-      e.printStackTrace();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 
   /**
-   * Méthode qui calcule l'itinéraire entre deux villes avec le moins de routes possible
-   * Utiliser la méthode de BFS
-   * @param depart le départ de l'itinéraire
+   * Méthode qui calcule l'itinéraire entre deux villes avec le moins de routes possible Utiliser la
+   * méthode de BFS
+   *
+   * @param depart      le départ de l'itinéraire
    * @param destination la destination de l'itinéraire
    */
   public void calculerItineraireMinimisantNombreRoutes(String depart, String destination) {
-    Map<City,City> predecessor = new HashMap<City,City>();
-    ArrayList <String> chemin = new ArrayList<String>();
+    Map<City, Road> predecessor = new HashMap<City, Road>();
     City start = cityName.get(depart);
-    City goingTo;
-    City visit;
-    Boolean find = false;
 
+
+    boolean find = depart.equals(destination);
 
     fileBfs.add(start);
     isVisitBfs.add(start);
 
 
+    while (!fileBfs.isEmpty() && !find) {
+      City visit = fileBfs.removeFirst();
 
-    while(!fileBfs.isEmpty() && !find){
-      visit = fileBfs.removeFirst();
-
-      if(cityRoads.get(visit) == null){
+      if (cityRoads.get(visit) == null) {
         continue;
-      }else{
+      } else {
         for (Road road : cityRoads.get(visit)) {
-          goingTo = road.getCityDest();
-          if(!isVisitBfs.contains(goingTo)){
+          City goingTo = road.getCityDest();
+          if (!isVisitBfs.contains(goingTo)) {
             fileBfs.add(goingTo);
             isVisitBfs.add(goingTo);
-            predecessor.put(goingTo,visit);
-
+            predecessor.put(goingTo, road);
           }
-          if(destination.equals(goingTo)){
-            find = true;
-          }
+          find = cityName.get(destination).equals(goingTo);
         }
-
       }
     }
 
-    chemin.add(cityName.get(destination).getName());
+    ArrayList <Road> chemin = new ArrayList<Road>();
     City actuel = cityName.get(destination);
 
-    while(actuel != null){
-      chemin.add(actuel.getName());
-      actuel = predecessor.get(actuel);
+        while (predecessor.get(actuel) != null){
+          if (!depart.equals(destination)){
+            chemin.add(predecessor.get(actuel));
+            actuel = predecessor.get(actuel).getCityStart();
+          }
+        }
 
+    affichage(chemin,depart,destination);
     }
 
-    Collections.reverse(chemin);
+    private void affichage(ArrayList <Road> chemin,String depart, String arriver){
     double totalDistance = 0;
+      Collections.reverse(chemin);
+    for (int i = 0; i < chemin.size(); i++) {
+      City currentCity = chemin.get(i).getCityStart();
+      City nextCity = chemin.get(i).getCityDest();
+      double distance = distance(currentCity.getLatitude(), currentCity.getLongitude(),
+          nextCity.getLatitude(), nextCity.getLongitude());
+      totalDistance = totalDistance + distance;
 
-    for (int i = 0; i < chemin.size() - 1; i++) {
-      City currentCity = cityName.get(chemin.get(i));
-      City nextCity = cityName.get(chemin.get(i + 1));
-      double distance = distance(currentCity.getLatitude(),currentCity.getLongitude(), nextCity.getLatitude(),nextCity.getLongitude());
-      totalDistance= totalDistance + distance;
-
-      System.out.println(currentCity.getName() + " -> " + nextCity.getName() + " (" + distance + " km)");
+      System.out.println(
+          currentCity.getName() + " -> " + nextCity.getName() + " (" + distance + " km)");
 
     }
 
-    System.out.println("Trajet de " + chemin.get(0) + " a " + chemin.get(chemin.size() -1) + " : " + chemin.size() + " routes et " + totalDistance + " kms");
+    System.out.println(
+        "Trajet de " + depart + " a " + arriver + " : " + chemin.size()
+            + " routes et " + totalDistance + " kms");
+    }
 
-
-  }
 
   /**
-   * Méthode qui calcule l'itinéraire entre deux villes avec le moins de kilomètres
-   * Utiliser la méthode de Dijkstra
-   * @param depart le départ de l'itinéraire
+   * Méthode qui calcule l'itinéraire entre deux villes avec le moins de kilomètres Utiliser la
+   * méthode de Dijkstra
+   *
+   * @param depart      le départ de l'itinéraire
    * @param destination la destination de l'itinéraire
    */
   public void calculerItineraireMinimisantKm(String depart, String destination) {
   }
 }
+
+
+
+
