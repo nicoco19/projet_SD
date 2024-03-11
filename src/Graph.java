@@ -74,6 +74,7 @@ public class Graph {
         }
 
         cityRoads.get(cityStart).add(road);
+
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -88,15 +89,15 @@ public class Graph {
    * @param destination la destination de l'itinéraire
    */
   public void calculerItineraireMinimisantNombreRoutes(String depart, String destination) {
-    Map<City, Road> predecessor = new HashMap<City, Road>();
+    Map<City, Road> predecessor = new HashMap<>();
     City start = cityName.get(depart);
 
+    City dest = cityName.get(destination);
 
-    boolean find = depart.equals(destination);
+    boolean find = start.equals(dest);
 
     fileBfs.add(start);
     isVisitBfs.add(start);
-
 
     while (!fileBfs.isEmpty() && !find) {
       City visit = fileBfs.removeFirst();
@@ -105,33 +106,38 @@ public class Graph {
         continue;
       } else {
         for (Road road : cityRoads.get(visit)) {
+         System.out.println("la ville de départ est : " + road.getCityStart().getName());
+         System.out.println("la ville d'arriver est : " + road.getCityDest().getName());
           City goingTo = road.getCityDest();
           if (!isVisitBfs.contains(goingTo)) {
             fileBfs.add(goingTo);
             isVisitBfs.add(goingTo);
-            predecessor.put(goingTo, road);
+            predecessor.put(goingTo, road); // Enregistrer le prédécesseur
           }
-          find = cityName.get(destination).equals(goingTo);
+          find = cityName.get(destination).getName().equals(goingTo.getName());
         }
       }
     }
 
-    ArrayList <Road> chemin = new ArrayList<Road>();
-    City actuel = cityName.get(destination);
+    ArrayList<Road> chemin = new ArrayList<>();
+    City actuel = dest;
 
-        while (predecessor.get(actuel) != null){
-          if (!depart.equals(destination)){
-            chemin.add(predecessor.get(actuel));
-            actuel = predecessor.get(actuel).getCityStart();
-          }
-        }
-
-    affichage(chemin,depart,destination);
+    // Reconstruire le chemin en utilisant les prédécesseurs
+    while (predecessor.containsKey(actuel)) {
+      Road predRoad = predecessor.get(actuel);
+      chemin.add(predRoad);
+      actuel = predRoad.getCityStart();
     }
 
-    private void affichage(ArrayList <Road> chemin,String depart, String arriver){
+    Collections.reverse(chemin); // Inverser le chemin pour qu'il soit du départ à la destination
+
+    affichage(chemin, depart, destination);
+  }
+
+
+  private void affichage(ArrayList <Road> chemin,String depart, String arriver){
     double totalDistance = 0;
-      Collections.reverse(chemin);
+      //Collections.reverse(chemin);
     for (int i = 0; i < chemin.size(); i++) {
       City currentCity = chemin.get(i).getCityStart();
       City nextCity = chemin.get(i).getCityDest();
