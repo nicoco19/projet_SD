@@ -1,11 +1,8 @@
 package src;
 
 import static src.Util.distance;
-
-import java.awt.List;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayDeque;
@@ -22,17 +19,11 @@ public class Graph {
   private Map<City, HashSet<Road>> cityRoads;
   private Map<String, City> cityName;
   private HashMap<Integer, City> citiesId;
-  private Deque<City> fileBfs;
-  private Set<City> isVisitBfs;
 
   public Graph(File cities, File roads) {
     cityRoads = new HashMap<City, HashSet<Road>>();
-
     citiesId = new HashMap<Integer, City>();
     cityName = new HashMap<String, City>();
-
-    fileBfs = new ArrayDeque<City>();
-    isVisitBfs = new HashSet<City>();
 
     try (FileReader fileReader = new FileReader(cities);
         BufferedReader bufferedReader = new BufferedReader(fileReader)) {
@@ -50,7 +41,7 @@ public class Graph {
         cityName.put(name, city);
       }
     } catch (IOException e) {
-      e.printStackTrace();
+      throw new RuntimeException(e);
     }
 
     try (FileReader fileReader = new FileReader(roads);
@@ -89,31 +80,44 @@ public class Graph {
    * @param destination la destination de l'itinéraire
    */
   public void calculerItineraireMinimisantNombreRoutes(String depart, String destination) {
+    // on cré un map pour reteenir le prédécesseur de la ville
     Map<City, Road> predecessor = new HashMap<>();
+    // la ville de départ
     City start = cityName.get(depart);
-
+    // la ville d'arriver
     City dest = cityName.get(destination);
-
+   // boolean qui va définir si l'élément est trouvé ou pas
     boolean find = start.equals(dest);
-
+   // est la file de l'algorithme BFS
+    Deque<City> fileBfs = new ArrayDeque<City>();
+    // est un HashSet qui va retenir les ville ou on est passé
+    Set<City> isVisitBfs = new HashSet<City>();
+    // on ajoute la ville start dans la file BFS
     fileBfs.add(start);
+    // on ajoute la ville start dans la liste des villes visitées
     isVisitBfs.add(start);
 
+    // on va continuer à parcourir les éléments jusqu'au moment ou on a trouvé la ville
+    // ou si la file BFS est vide donc on a visité tous les éléments
     while (!fileBfs.isEmpty() && !find) {
       City visit = fileBfs.removeFirst();
 
       if (cityRoads.get(visit) == null) {
         continue;
       } else {
+
         for (Road road : cityRoads.get(visit)) {
          System.out.println("la ville de départ est : " + road.getCityStart().getName());
          System.out.println("la ville d'arriver est : " + road.getCityDest().getName());
+
           City goingTo = road.getCityDest();
+
           if (!isVisitBfs.contains(goingTo)) {
             fileBfs.add(goingTo);
             isVisitBfs.add(goingTo);
-            predecessor.put(goingTo, road); // Enregistrer le prédécesseur
+            predecessor.put(goingTo, road);
           }
+          // vérifie si l'élément est trouvé ou pas
           find = cityName.get(destination).getName().equals(goingTo.getName());
         }
       }
@@ -128,19 +132,20 @@ public class Graph {
       chemin.add(predRoad);
       actuel = predRoad.getCityStart();
     }
-
-    Collections.reverse(chemin); // Inverser le chemin pour qu'il soit du départ à la destination
-
+    // inverse les éléments de chemin pour pouvoir reformer le chemin
+    Collections.reverse(chemin);
+    // affiche le chemin sous forme textuel
     affichage(chemin, depart, destination);
   }
 
 
   private void affichage(ArrayList <Road> chemin,String depart, String arriver){
+
     double totalDistance = 0;
-      //Collections.reverse(chemin);
-    for (int i = 0; i < chemin.size(); i++) {
-      City currentCity = chemin.get(i).getCityStart();
-      City nextCity = chemin.get(i).getCityDest();
+
+    for (Road road : chemin) {
+      City currentCity = road.getCityStart();
+      City nextCity = road.getCityDest();
       double distance = distance(currentCity.getLatitude(), currentCity.getLongitude(),
           nextCity.getLatitude(), nextCity.getLongitude());
       totalDistance = totalDistance + distance;
