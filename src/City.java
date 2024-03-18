@@ -8,7 +8,7 @@ public class City {
   private String name;
   private double longitude;
   private double latitude;
-  private int tempsEtiquetteProvisoire; // on doit conserver le temps d'atteinte pour la méthode de Dijkstra
+  private double tempsEtiquetteProvisoire; // on doit conserver le temps d'atteinte pour la méthode de Dijkstra
 
   public City(int id, String name, double longitude, double latitude) {
     this.id = id;
@@ -49,11 +49,11 @@ public class City {
     this.latitude = latitude;
   }
 
-  public int getTempsEtiquetteProvisoire() {
+  public double getTempsEtiquetteProvisoire() {
     return tempsEtiquetteProvisoire;
   }
 
-  public void setTempsEtiquetteProvisoire(int tempsEtiquetteProvisoire) {
+  public void setTempsEtiquetteProvisoire(double tempsEtiquetteProvisoire) {
     this.tempsEtiquetteProvisoire = tempsEtiquetteProvisoire;
   }
 

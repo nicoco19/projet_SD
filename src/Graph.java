@@ -2,15 +2,12 @@ package src;
 
 import static src.Util.distance;
 
-import java.awt.List;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
@@ -26,54 +23,67 @@ public class Graph {
   private HashMap<Integer, City> citiesId;
 
   public Graph(File cities, File roads) {
-    citiesId = new HashMap<Integer,City>();
-    cityName = new HashMap<String,City>();
+    cityRoads = new HashMap<City, HashSet<Road>>();
 
-    String ligne;
-    String[] tableLigne;
+    citiesId = new HashMap<Integer, City>();
+    cityName = new HashMap<String, City>();
 
-    try(FileReader fileReader = new FileReader(cities);
+    try (FileReader fileReader = new FileReader(cities);
+        BufferedReader bufferedReader = new BufferedReader(fileReader)) {
+      String line;
 
-        BufferedReader bufferedReader =  new BufferedReader(fileReader)){
+      while ((line = bufferedReader.readLine()) != null) {
+        String[] data = line.split(",");
 
-      while((ligne = bufferedReader.readLine()) != null){
-        tableLigne = ligne.split(",");
-
-        int id = Integer.parseInt(tableLigne[0]);
-        String name = tableLigne[1];
-        double longitude = Double.parseDouble(tableLigne[2]);
-        double latitude = Double.parseDouble(tableLigne[3]);
-        City city = new City(id,name,longitude,latitude);
-        citiesId.put(id,city);
-        cityName.put(name,city);
+        int id = Integer.parseInt(data[0]);
+        String name = data[1];
+        double longitude = Double.parseDouble(data[2]);
+        double latitude = Double.parseDouble(data[3]);
+        City city = new City(id, name, longitude, latitude);
+        citiesId.put(id, city);
+        cityName.put(name, city);
       }
-    }catch(IOException e){
-      throw new RuntimeException();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
 
-    try(FileReader fileReader = new FileReader(roads);
-        BufferedReader bufferedReader =  new BufferedReader(fileReader)){
+    try (FileReader fileReader = new FileReader(roads);
+        BufferedReader bufferedReader = new BufferedReader(fileReader)) {
+      String line;
 
-      cityRoads = new HashMap<>();
+      while ((line = bufferedReader.readLine()) != null) {
 
-      while((ligne = bufferedReader.readLine()) != null){
+        String[] data = line.split(",");
 
-        tableLigne = ligne.split(",");
-
-        int cityStartId = Integer.parseInt(tableLigne[0]);
-        int cityDestId = Integer.parseInt(tableLigne[1]);
+        int cityStartId = Integer.parseInt(data[0]);
+        int cityDestId = Integer.parseInt(data[1]);
         City cityStart = citiesId.get(cityStartId);
         City cityDest = citiesId.get(cityDestId);
 
         Road road = new Road(cityStart, cityDest);
 
-        if(cityRoads.get(road.getCityStart()) == null){
-          cityRoads.put(road.getCityStart(),new HashSet<>());
+        // verifie l'existence de cityStart
+        if (!cityRoads.containsKey(cityStart)) {
+          HashSet<Road> hashSetRoad = new HashSet<>();
+          cityRoads.put(cityStart, hashSetRoad);
         }
-        cityRoads.get(road.getCityStart()).add(road);
+
+        // verifie l'existence de cityDest
+        if (!cityRoads.containsKey(cityDest)) {
+          HashSet<Road> hashSetRoad = new HashSet<>();
+          cityRoads.put(cityDest, hashSetRoad);
+        }
+
+        // on ajoute la road dans cityStart
+        cityRoads.get(cityStart).add(road);
+
+        // ajoute route inverse Ã  cityDest
+        Road reverseRoad = new Road(cityDest, cityStart);
+        cityRoads.get(cityDest).add(reverseRoad);
+
       }
-    }catch(IOException e){
-      throw new RuntimeException();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -142,12 +152,11 @@ public class Graph {
    * @param destination la destination de l'itinéraire
    */
   public void calculerItineraireMinimisantKm(String depart, String destination) {
-
-    TreeSet<City> etiquetteProvisoire = new TreeSet<>(Comparator.comparing(City::getTempsEtiquetteProvisoire).thenComparing(City::getName));
+    TreeSet<City> etiquetteProvisoire = new TreeSet<>(Comparator.comparingDouble(City::getTempsEtiquetteProvisoire).thenComparing(City::getName));
     // Pour l'étiquette provisoire, on doit les trier par ordre de temps d'atteinte, ce qui permettra de traiter le plus petit l'un après l'autre
 
     Set<City> etiquetteDefinitive = new HashSet<>();
-    HashMap<City,Road> chemin = new HashMap<>();
+    Map<City, Road> predecessor = new HashMap<>();
 
     City cityStart = cityName.get(depart);
     City cityDest = cityName.get(destination);
@@ -155,60 +164,64 @@ public class Graph {
     cityStart.setTempsEtiquetteProvisoire(0); // on met à 0 la valeur de son temps (départ)
     etiquetteProvisoire.add(cityStart);
 
-    while (!etiquetteProvisoire.isEmpty()){
-      City cityActual = etiquetteProvisoire.removeFirst(); // on supprime et renvoie le premier élément
+    while (!etiquetteProvisoire.isEmpty()) {
+      City cityActual = etiquetteProvisoire.pollFirst(); // on supprime et renvoie le premier élément
+
+      if (etiquetteDefinitive.contains(cityActual)) {
+        continue;
+      }
+
+      etiquetteDefinitive.add(cityActual);
+
+      if (cityActual.equals(cityDest)) {
+        // Destination atteinte, sortir de la boucle
+        break;
+      }
 
       if (cityRoads.get(cityActual) == null) {
         continue;
-      }else{
-        for(Road road : cityRoads.get(cityActual)){ // on parcourt toutes les routes sortantes de la ville actuelle
+      } else {
+        for (Road road : cityRoads.get(cityActual)) { // on parcourt toutes les routes sortantes de la ville actuelle
           City cityEnd = road.getCityDest(); // pour chaque route, on prend la ville de destination
 
-          // ville inconnue
-          int tempsProvisoire = cityActual.getTempsEtiquetteProvisoire() + road.getDuree();
+          // calcul du temps provisoire
+          double distanceToEnd = distance(cityActual.getLongitude(), cityActual.getLatitude(), cityEnd.getLongitude(), cityEnd.getLatitude());
+          double newTime = cityActual.getTempsEtiquetteProvisoire() + distanceToEnd;
 
-          if(!etiquetteProvisoire.contains(cityEnd)){
-            cityEnd.setTempsEtiquetteProvisoire(tempsProvisoire);
+          if (!etiquetteDefinitive.contains(cityEnd) && (!etiquetteProvisoire.contains(cityEnd) || newTime < cityEnd.getTempsEtiquetteProvisoire())) {
+            cityEnd.setTempsEtiquetteProvisoire(newTime);
             etiquetteProvisoire.add(cityEnd);
-            chemin.put(cityEnd,road); // on retient pour la ville, sa route
-          }else {
-            if(cityEnd.getTempsEtiquetteProvisoire() > tempsProvisoire){
-              etiquetteProvisoire.remove(cityEnd);
-              cityEnd.setTempsEtiquetteProvisoire(tempsProvisoire);
-              etiquetteProvisoire.add(cityEnd);
-              chemin.put(cityEnd,road);
-            }
+            predecessor.put(cityEnd, road);
           }
         }
       }
-
     }
 
-    ArrayList<Road> chemins = new ArrayList<>();
+  ArrayList<Road> chemins = new ArrayList<>();
     City villeActuelle = cityName.get(destination);
 
     // Reconstruire le chemin en utilisant les prédécesseurs
-    while (chemin.containsKey(villeActuelle)) {
-      Road predRoad = chemin.get(villeActuelle);
+    while (predecessor.containsKey(villeActuelle)) {
+      Road predRoad = predecessor.get(villeActuelle);
       chemins.add(predRoad);
       villeActuelle = predRoad.getCityStart();
     }
 
     Collections.reverse(chemins); // Inverser le chemin pour qu'il soit du départ à la destination
-
-    affichage(chemins, depart, destination);
-
+  double nbrKm =0;
+    for (City city : etiquetteDefinitive){
+      nbrKm = nbrKm + city.getTempsEtiquetteProvisoire();
+    }
     affichage(chemins,depart,destination);
   }
 
   private void affichage(ArrayList <Road> chemin,String depart, String arriver){
     double totalDistance = 0;
-    //Collections.reverse(chemin);
     for (int i = 0; i < chemin.size(); i++) {
       City currentCity = chemin.get(i).getCityStart();
       City nextCity = chemin.get(i).getCityDest();
-      double distance = distance(currentCity.getLatitude(), currentCity.getLongitude(),
-          nextCity.getLatitude(), nextCity.getLongitude());
+      double distance = distance(currentCity.getLongitude(),currentCity.getLatitude(),
+          nextCity.getLongitude(), nextCity.getLatitude());
       totalDistance = totalDistance + distance;
 
       System.out.println(
