@@ -12,11 +12,13 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 public class Graph {
   private Map<City,HashSet<Road>> cityRoads; // map contenant une ville avec toutes ses routes sortantes
@@ -90,45 +92,47 @@ public class Graph {
 
     City cityStart = cityName.get(depart); // on prend la station de départ
     City cityDest = cityName.get(destination); // et celle d'arrivée
-    boolean find = false;
 
     // on ajoute à la queue et à l'ensemble la station
     fileBfs.add(cityStart);
     isVisitBfs.add(cityStart);
 
+    boolean find = false;
     while(!find){
       City actualCity = fileBfs.removeFirst(); // on supprime la ville à la queue pour l'utiliser comme ville courante
 
-      for(Road road : cityRoads.get(actualCity)){ // on parcourt chacune des routes de la ville courante
+      if (cityRoads.get(actualCity) == null) {
+        continue;
+      }else {
+        for(Road road : cityRoads.get(actualCity)){ // on parcourt chacune des routes de la ville courante
 
-        City cityEnd = road.getCityDest(); // on prend la ville d'arrivée pour la route traitée
+          City cityEnd = road.getCityDest(); // on prend la ville d'arrivée pour la route traitée
 
-        if(!isVisitBfs.contains(cityEnd)){ // cas de la ville jamais visitée
-          isVisitBfs.add(cityEnd);
+          if(!isVisitBfs.contains(cityEnd)){ // cas de la ville jamais visitée
+            isVisitBfs.add(cityEnd);
 
-          fileBfs.add(cityEnd);
-          chemin.put(cityEnd,road);
+            fileBfs.add(cityEnd);
+            chemin.put(cityEnd,road);
+          }
+          if(cityEnd.getName().equals(cityDest.getName())) find = true; // si on a trouvé toutes les villes de destination de la ville courante
         }
-        if(cityEnd.equals(cityDest)) find = true; // si on a trouvé toutes les villes de destination de la ville courante
       }
-    }
-
-
-    double totalDistance = 0;
-
-    for (int i = 0; i < chemin.size() - 1; i++) {
-      City currentCity = cityName.get(chemin.get(i));
-      City nextCity = cityName.get(chemin.get(i + 1));
-      double distance = distance(currentCity.getLatitude(),currentCity.getLongitude(), nextCity.getLatitude(),nextCity.getLongitude());
-      totalDistance= totalDistance + distance;
-
-      System.out.println(currentCity.getName() + " -> " + nextCity.getName() + " (" + distance + " km)");
 
     }
 
-    System.out.println("Trajet de " + chemin.get(0) + " a " + chemin.get(chemin.size() -1) + " : " + chemin.size() + " routes et " + totalDistance + " kms");
+    ArrayList<Road> chemins = new ArrayList<>();
+    City villeActuelle = cityName.get(destination);
 
+    // Reconstruire le chemin en utilisant les prédécesseurs
+    while (chemin.containsKey(villeActuelle)) {
+      Road predRoad = chemin.get(villeActuelle);
+      chemins.add(predRoad);
+      villeActuelle = predRoad.getCityStart();
+    }
 
+    Collections.reverse(chemins); // Inverser le chemin pour qu'il soit du départ à la destination
+
+    affichage(chemins, depart, destination);
   }
 
   /**
@@ -138,6 +142,82 @@ public class Graph {
    * @param destination la destination de l'itinéraire
    */
   public void calculerItineraireMinimisantKm(String depart, String destination) {
+
+    TreeSet<City> etiquetteProvisoire = new TreeSet<>(Comparator.comparing(City::getTempsEtiquetteProvisoire).thenComparing(City::getName));
+    // Pour l'étiquette provisoire, on doit les trier par ordre de temps d'atteinte, ce qui permettra de traiter le plus petit l'un après l'autre
+
+    Set<City> etiquetteDefinitive = new HashSet<>();
+    HashMap<City,Road> chemin = new HashMap<>();
+
+    City cityStart = cityName.get(depart);
+    City cityDest = cityName.get(destination);
+
+    cityStart.setTempsEtiquetteProvisoire(0); // on met à 0 la valeur de son temps (départ)
+    etiquetteProvisoire.add(cityStart);
+
+    while (!etiquetteProvisoire.isEmpty()){
+      City cityActual = etiquetteProvisoire.removeFirst(); // on supprime et renvoie le premier élément
+
+      if (cityRoads.get(cityActual) == null) {
+        continue;
+      }else{
+        for(Road road : cityRoads.get(cityActual)){ // on parcourt toutes les routes sortantes de la ville actuelle
+          City cityEnd = road.getCityDest(); // pour chaque route, on prend la ville de destination
+
+          // ville inconnue
+          int tempsProvisoire = cityActual.getTempsEtiquetteProvisoire() + road.getDuree();
+
+          if(!etiquetteProvisoire.contains(cityEnd)){
+            cityEnd.setTempsEtiquetteProvisoire(tempsProvisoire);
+            etiquetteProvisoire.add(cityEnd);
+            chemin.put(cityEnd,road); // on retient pour la ville, sa route
+          }else {
+            if(cityEnd.getTempsEtiquetteProvisoire() > tempsProvisoire){
+              etiquetteProvisoire.remove(cityEnd);
+              cityEnd.setTempsEtiquetteProvisoire(tempsProvisoire);
+              etiquetteProvisoire.add(cityEnd);
+              chemin.put(cityEnd,road);
+            }
+          }
+        }
+      }
+
+    }
+
+    ArrayList<Road> chemins = new ArrayList<>();
+    City villeActuelle = cityName.get(destination);
+
+    // Reconstruire le chemin en utilisant les prédécesseurs
+    while (chemin.containsKey(villeActuelle)) {
+      Road predRoad = chemin.get(villeActuelle);
+      chemins.add(predRoad);
+      villeActuelle = predRoad.getCityStart();
+    }
+
+    Collections.reverse(chemins); // Inverser le chemin pour qu'il soit du départ à la destination
+
+    affichage(chemins, depart, destination);
+
+    affichage(chemins,depart,destination);
   }
 
+  private void affichage(ArrayList <Road> chemin,String depart, String arriver){
+    double totalDistance = 0;
+    //Collections.reverse(chemin);
+    for (int i = 0; i < chemin.size(); i++) {
+      City currentCity = chemin.get(i).getCityStart();
+      City nextCity = chemin.get(i).getCityDest();
+      double distance = distance(currentCity.getLatitude(), currentCity.getLongitude(),
+          nextCity.getLatitude(), nextCity.getLongitude());
+      totalDistance = totalDistance + distance;
+
+      System.out.println(
+          currentCity.getName() + " -> " + nextCity.getName() + " (" + distance + " km)");
+
+    }
+
+    System.out.println(
+        "Trajet de " + depart + " a " + arriver + " : " + chemin.size()
+            + " routes et " + totalDistance + " kms");
+  }
 }
