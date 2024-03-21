@@ -1,7 +1,3 @@
-package src;
-
-import static src.Util.distance;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -43,6 +39,7 @@ public class Graph {
         City city = new City(id, name, longitude, latitude);
         citiesId.put(id, city);
         cityName.put(name, city);
+
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -113,25 +110,21 @@ public class Graph {
     while (!find) {
       City actualCity = fileBfs.removeFirst(); // on supprime la ville à la queue pour l'utiliser comme ville courante
 
-      if (cityRoads.get(actualCity) == null) {
-        continue;
-      } else {
-        for (Road road : cityRoads.get(
-            actualCity)) { // on parcourt chacune des routes de la ville courante
+      for (Road road : cityRoads.get(
+          actualCity)) { // on parcourt chacune des routes de la ville courante
 
-          City cityEnd = road.getCityDest(); // on prend la ville d'arrivée pour la route traitée
+        City cityEnd = road.getCityDest(); // on prend la ville d'arrivée pour la route traitée
 
-          if (!isVisitBfs.contains(cityEnd)) { // cas de la ville jamais visitée
-            isVisitBfs.add(cityEnd);
+        if (!isVisitBfs.contains(cityEnd)) { // cas de la ville jamais visitée
+          isVisitBfs.add(cityEnd);
 
-            fileBfs.add(cityEnd);
-            chemin.put(cityEnd, road);
-          }
-          if (cityEnd.getName().equals(cityDest.getName()))
-            find = true; // si on a trouvé toutes les villes de destination de la ville courante
+          fileBfs.add(cityEnd);
+          chemin.put(cityEnd, road);
+        }
+        if (cityEnd.getName().equals(cityDest.getName())) {
+          find = true; // si on a trouvé toutes les villes de destination de la ville courante
         }
       }
-
     }
 
     ArrayList<Road> chemins = new ArrayList<>();
@@ -167,6 +160,12 @@ public class Graph {
     City cityStart = cityName.get(depart);
     City cityDest = cityName.get(destination);
 
+    for (City city : cityName.values()) {
+      if (!city.equals(depart)) {
+        city.setTempsEtiquetteProvisoire(Double.MAX_VALUE);
+      }
+    }
+
     cityStart.setTempsEtiquetteProvisoire(0); // on met à 0 la valeur de son temps (départ)
     etiquetteProvisoire.add(cityStart);
 
@@ -184,26 +183,22 @@ public class Graph {
         break;
       }
 
-      if (cityRoads.get(cityActual) == null) {
-        continue;
-      } else {
-        for (Road road : cityRoads.get(
-            cityActual)) { // on parcourt toutes les routes sortantes de la ville actuelle
-          City cityEnd = road.getCityDest(); // pour chaque route, on prend la ville de destination
+      for (Road road : cityRoads.get(
+          cityActual)) { // on parcourt toutes les routes sortantes de la ville actuelle
+        City cityEnd = road.getCityDest(); // pour chaque route, on prend la ville de destination
 
-          // calcul du temps provisoire
-          double distanceToEnd = distance(cityActual.getLongitude(), cityActual.getLatitude(),
-              cityEnd.getLongitude(), cityEnd.getLatitude());
-          double newTime = cityActual.getTempsEtiquetteProvisoire() + distanceToEnd;
+        // calcul du temps provisoire
+        double tempsProvisoire = Util.distance(cityActual.getLongitude(), cityActual.getLatitude(),
+            cityEnd.getLongitude(), cityEnd.getLatitude());
+        double time = cityActual.getTempsEtiquetteProvisoire() + tempsProvisoire;
 
-          if (!etiquetteDefinitive.contains(cityEnd) && (!etiquetteProvisoire.contains(cityEnd)
-              || newTime < cityEnd.getTempsEtiquetteProvisoire())) {
-            cityEnd.setTempsEtiquetteProvisoire(newTime);
-            etiquetteProvisoire.add(cityEnd);
-            predecessor.put(cityEnd, road);
-          }
+        if (!etiquetteDefinitive.contains(cityEnd) && time < cityEnd.getTempsEtiquetteProvisoire()) {
+          cityEnd.setTempsEtiquetteProvisoire(time);
+          etiquetteProvisoire.add(cityEnd);
+          predecessor.put(cityEnd, road);
         }
       }
+
     }
 
     ArrayList<Road> chemins = new ArrayList<>();
@@ -224,29 +219,41 @@ public class Graph {
     affichage(chemins, depart, destination);
   }
 
-  private void affichage(ArrayList <Road> chemin,String depart, String arriver){
+  /**
+   * Affiche l'itinéraire entre deux villes spécifiées, incluant la liste des routes à emprunter
+   * et la distance totale en kilomètres. Cette méthode calcule la distance entre chaque paire de
+   * villes consécutives dans l'itinéraire et affiche chaque segment de route avec sa distance.
+   * À la fin, elle affiche également un résumé comprenant le nombre total de routes et la distance
+   * totale parcourue.
+   *
+   * @param chemin La liste des routes composant l'itinéraire entre la ville de départ et la ville d'arrivée.
+   * @param depart Le nom de la ville de départ.
+   * @param arriver Le nom de la ville d'arrivée.
+   */
+  private void affichage(ArrayList<Road> chemin, String depart, String arriver) {
     double totalDistance = 0;
 
     for (int i = 0; i < chemin.size(); i++) {
       City currentCity = chemin.get(i).getCityStart();
       City nextCity = chemin.get(i).getCityDest();
-      totalDistance = totalDistance + distance(currentCity.getLongitude(),currentCity.getLatitude(),
-          nextCity.getLongitude(),nextCity.getLatitude());
+      totalDistance =
+          totalDistance + Util.distance(currentCity.getLongitude(), currentCity.getLatitude(),
+              nextCity.getLongitude(), nextCity.getLatitude());
     }
 
     System.out.println(
         "Itineraire de " + depart + " a " + arriver + " : " + chemin.size()
             + " routes et " + totalDistance + " kms");
 
-
     for (int i = 0; i < chemin.size(); i++) {
       City currentCity = chemin.get(i).getCityStart();
       City nextCity = chemin.get(i).getCityDest();
-      double distance = distance(currentCity.getLongitude(),currentCity.getLatitude(),
-          nextCity.getLongitude(),nextCity.getLatitude());
+      double distance = Util.distance(currentCity.getLongitude(), currentCity.getLatitude(),
+          nextCity.getLongitude(), nextCity.getLatitude());
 
       System.out.println(
-          currentCity.getName() + " -> " + nextCity.getName() + " (" + String.format("%.2f", distance) + " km)");
+          currentCity.getName() + " -> " + nextCity.getName() + " (" + String.format("%.2f",
+              distance) + " km)");
     }
   }
 }

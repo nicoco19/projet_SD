@@ -1,9 +1,8 @@
-package src;
-
 public class Road {
 
   private City cityStart;
   private City cityDest;
+  private int duree;
 
   public Road(City cityStart, City cityDest) {
     this.cityStart = cityStart;
@@ -24,5 +23,13 @@ public class Road {
 
   public void setCityDest(City cityDest) {
     this.cityDest = cityDest;
+  }
+
+  public int getDuree() {
+    return duree;
+  }
+
+  public void setDuree(int duree) {
+    this.duree = duree;
   }
 }
